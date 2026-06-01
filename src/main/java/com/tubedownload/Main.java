@@ -4,14 +4,6 @@ import com.github.felipeucelli.javatube.StreamQuery;
 import com.github.felipeucelli.javatube.Youtube;
 import com.mpatric.mp3agic.*;
 import com.nextbreakpoint.ffmpeg4java.*;
-import org.farng.mp3.MP3File;
-import org.farng.mp3.TagConstant;
-import org.farng.mp3.TagOptionSingleton;
-import org.farng.mp3.id3.AbstractID3v2;
-import org.farng.mp3.id3.ID3v1_1;
-import org.farng.mp3.id3.ID3v2_3;
-import org.farng.mp3.id3.ID3v2_4;
-
 
 import java.io.File;
 
@@ -79,15 +71,15 @@ public class Main {
         id3v24Tag.setGenre(12);
         id3v24Tag.setComment("Some comment");
 
-        File imageFile = new File("C:\\Users\\ivanb\\Pictures\\test.jpg");
+        File imageFile = new File("C:\\Users\\ivanb\\Music\\TESTE\\teste.jpg");
         byte[] imageData = new byte[(int) imageFile.length()];
-        try (var fis = new java.io.FileInputStream(imageFile)) {
-            fis.read(imageData);
-        }
+//        try (var fis = new java.io.FileInputStream(imageFile)) {
+//            fis.read(imageData);
+//        }
 
         id3v24Tag.setAlbumImage(imageData, "image/jpeg");
 
-        mp3file.save("MyMp3File.mp3");
+        mp3file.save("C:\\Users\\ivanb\\Music\\TESTE\\MyMp3File.mp3");
 
     }
 }
