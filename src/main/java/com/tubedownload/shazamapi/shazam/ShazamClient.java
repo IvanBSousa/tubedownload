@@ -57,7 +57,9 @@ public class ShazamClient {
                 .header("X-Shazam-Platform", "IPHONE")
                 .header("X-Shazam-AppVersion", "14.1.0")
                 .header("Accept", "*/*")
-                .header("User-Agent", "Shazam/3685 CFNetwork/1197 Darwin/20.0.0")
+
+                //QUANDO DER ERRO 429 ALTERAR SHAZAM/XXXX E CFNETWORK/XXXX
+                .header("User-Agent", "Shazam/3684 CFNetwork/1196 Darwin/20.0.0")
                 .header("Accept-Language", config.lang())
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))

@@ -27,9 +27,17 @@ public class ShazamService {
         List<RecognizeResult> results = new ArrayList<>();
         for (DecodedMessage signature : signatureGenerator) {
             int currentOffset = signatureGenerator.samplesProcessed() / AudioNormalizer.NORMALIZED_FRAME_RATE;
-            results.add(new RecognizeResult(currentOffset, shazamClient.recognize(signature)));
+            var response = shazamClient.recognize(signature);
+            results.add(new RecognizeResult(currentOffset, response));
+            if (isMatch(response)) {
+                break;
+            }
         }
         return results;
+    }
+
+    private boolean isMatch(com.fasterxml.jackson.databind.JsonNode response) {
+        return response != null && response.hasNonNull("track");
     }
 
     private SignatureGenerator createSignatureGenerator(short[] samples) {
