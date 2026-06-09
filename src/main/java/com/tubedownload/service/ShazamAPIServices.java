@@ -1,6 +1,7 @@
 package com.tubedownload.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.github.felipeucelli.javatube.Playlist;
 import com.github.felipeucelli.javatube.StreamQuery;
 import com.github.felipeucelli.javatube.Youtube;
 import com.mpatric.mp3agic.*;
@@ -18,6 +19,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -27,16 +29,17 @@ public class ShazamAPIServices {
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
     private final ShazamService shazamService;
+    File outputDir = new File("C:\\Users\\ivanb\\Music\\TESTE\\NOVO\\");
+    File downloadDir = new File("C:\\Users\\ivanb\\Music\\TESTE\\");
+
 
     public ShazamAPIServices(ShazamService shazamService) {
         this.shazamService = shazamService;
     }
 
-    public void baixarConverterReconhecerInserirTAG(String urlYoutube) throws Exception {
+    public void processarUnicoVideo(String urlYoutube) throws Exception {
 
-        File outputDir = new File("C:\\Users\\ivanb\\Music\\TESTE\\NOVO\\");
-
-        File inputFile = baixarYoutube(urlYoutube);
+        File inputFile = baixarYoutube(urlYoutube, 1);
 
         File outputFile = new File(outputDir, stripExtension(inputFile.getName()) + ".mp3");
         System.out.println("Input file: " + inputFile.getAbsolutePath());
@@ -44,8 +47,50 @@ public class ShazamAPIServices {
         byte[] mp3Data = getMp3Data(inputFile, outputFile);
 
         inserirTags(outputFile.getAbsolutePath(), reconhecerShazam(mp3Data));
+    }
 
+    public void processarPlaylist(String urlPlaylist) throws Exception {
+        ArrayList<String> videoUrls = new ArrayList<>(new Playlist(
+                urlPlaylist)
+                //"https://www.youtube.com/watch?v=P8UqZ5IF-QE&list=PLkjk76v4J1ar7czy0q47g5lSXgK5uzrCv")
+                .getVideos());
 
+        if (videoUrls.isEmpty()) {
+            throw new IOException("Playlist sem videos. URL recebida: " + urlPlaylist);
+        }
+
+        for (String videoUrl : videoUrls) {
+            System.out.println("Playlist item: " + videoUrl);
+        }
+
+        int limite = Math.min(5, videoUrls.size());
+        for (int videos = 0; videos < limite; videos++) {
+            System.out.println("Processando indice " + videos + ": " + videoUrls.get(videos));
+            File inputFile = null;
+            File outputFile = null;
+            try {
+                inputFile = baixarYoutube(videoUrls.get(videos), videos);
+
+                outputFile = new File(outputDir, stripExtension(inputFile.getName()) + ".mp3");
+                System.out.println("Input file: " + inputFile.getAbsolutePath());
+
+                byte[] mp3Data = getMp3Data(inputFile, outputFile);
+                ResponseShazamAPI response = reconhecerShazam(mp3Data);
+
+                inserirTags(outputFile.getAbsolutePath(), response);
+            } catch (IOException e) {
+                System.out.println("Pulando video " + videos + ": " + e.getMessage());
+            } catch (IndexOutOfBoundsException e) {
+                System.out.println("Pulando video " + videos + ": resposta do Shazam incompleta");
+            } finally {
+                if (outputFile != null) {
+                    Files.deleteIfExists(outputFile.toPath());
+                }
+                if (inputFile != null) {
+                    Files.deleteIfExists(inputFile.toPath());
+                }
+            }
+        }
     }
 
     private ResponseShazamAPI reconhecerShazam(byte[] mp3Data) throws Exception {
@@ -55,13 +100,19 @@ public class ShazamAPIServices {
         }
 
         JsonNode response = result.getFirst().response();
+        JsonNode track = response.path("track");
+        JsonNode sections = track.path("sections");
+
+        if (track.isMissingNode() || track.isNull() || sections.isMissingNode() || sections.isNull() || sections.isEmpty()) {
+            throw new IOException("Resposta do Shazam sem dados suficientes para a musica");
+        }
 
         return new ResponseShazamAPI(
-                response.path("track").path("title").asText(),
-                response.path("track").path("subtitle").asText(),
-                response.path("track").path("sections").get(0).path("metadata").get(0).path("text").asText(),
-                response.path("track").path("sections").get(0).path("metadata").get(2).path("text").asText(),
-                response.path("track").path("images").path("coverart").asText()
+                track.path("title").asText(),
+                track.path("subtitle").asText(),
+                track.path("sections").get(0).path("metadata").get(0).path("text").asText(),
+                track.path("sections").get(0).path("metadata").get(2).path("text").asText(),
+                track.path("images").path("coverart").asText()
         );
     }
 
@@ -110,22 +161,22 @@ public class ShazamAPIServices {
         return output;
     }
 
-    private File baixarYoutube(String urlYoutube) throws Exception {
+    private File baixarYoutube(String urlYoutube, int indice) throws Exception {
         Youtube yt = new Youtube(urlYoutube);
-        File downloadDir = new File("C:\\Users\\ivanb\\Music\\TESTE\\");
+        File downloadDir = new File("C:\\Users\\ivanb\\Music\\TESTE\\download-" + indice + "\\");
 
+        Files.createDirectories(downloadDir.toPath());
         clearDirectory(downloadDir.toPath());
 
         String downloadPath = ensureTrailingSeparator(downloadDir.getAbsolutePath());
+        System.out.println("Baixando URL: " + urlYoutube);
+        System.out.println("Baixando para: " + downloadPath);
 
         yt.streams().filter(StreamQuery.Filter.builder()
                 .type("audio")
                 .abr("128kbps")
                 .build()
         ).getFirst().download(downloadPath);
-
-        System.out.println(downloadDir);
-        System.out.println("Baixando para: " + downloadPath);
 
         return findNewestFile(downloadDir.toPath())
                 .orElseThrow(() -> new IOException("No downloaded file found in: " + downloadDir.getAbsolutePath()));
