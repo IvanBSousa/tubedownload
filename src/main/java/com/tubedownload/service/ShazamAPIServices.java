@@ -32,7 +32,6 @@ public class ShazamAPIServices {
     File outputDir = new File("C:\\Users\\ivanb\\Music\\TESTE\\NOVO\\");
     File downloadDir = new File("C:\\Users\\ivanb\\Music\\TESTE\\");
 
-
     public ShazamAPIServices(ShazamService shazamService) {
         this.shazamService = shazamService;
     }
@@ -51,9 +50,7 @@ public class ShazamAPIServices {
 
     public void processarPlaylist(String urlPlaylist) throws Exception {
         ArrayList<String> videoUrls = new ArrayList<>(new Playlist(
-                urlPlaylist)
-                //"https://www.youtube.com/watch?v=P8UqZ5IF-QE&list=PLkjk76v4J1ar7czy0q47g5lSXgK5uzrCv")
-                .getVideos());
+                urlPlaylist).getVideos());
 
         if (videoUrls.isEmpty()) {
             throw new IOException("Playlist sem videos. URL recebida: " + urlPlaylist);
@@ -63,8 +60,7 @@ public class ShazamAPIServices {
             System.out.println("Playlist item: " + videoUrl);
         }
 
-        int limite = Math.min(5, videoUrls.size());
-        for (int videos = 0; videos < limite; videos++) {
+        for (int videos = 0; videos < 5; videos++) {
             System.out.println("Processando indice " + videos + ": " + videoUrls.get(videos));
             File inputFile = null;
             File outputFile = null;
@@ -82,14 +78,14 @@ public class ShazamAPIServices {
                 System.out.println("Pulando video " + videos + ": " + e.getMessage());
             } catch (IndexOutOfBoundsException e) {
                 System.out.println("Pulando video " + videos + ": resposta do Shazam incompleta");
-            } finally {
-                if (outputFile != null) {
-                    Files.deleteIfExists(outputFile.toPath());
-                }
-                if (inputFile != null) {
-                    Files.deleteIfExists(inputFile.toPath());
-                }
-            }
+            } //finally {
+//                if (outputFile != null) {
+//                    Files.deleteIfExists(outputFile.toPath());
+//                }
+//                if (inputFile != null) {
+//                    Files.deleteIfExists(inputFile.toPath());
+//                }
+//            }
         }
     }
 
@@ -102,8 +98,10 @@ public class ShazamAPIServices {
         JsonNode response = result.getFirst().response();
         JsonNode track = response.path("track");
         JsonNode sections = track.path("sections");
+        JsonNode metadata = track.path("metadata");
 
-        if (track.isMissingNode() || track.isNull() || sections.isMissingNode() || sections.isNull() || sections.isEmpty()) {
+        if (track.isMissingNode() || track.isNull() || sections.isMissingNode() || sections.isNull() ||
+                sections.isEmpty() || metadata.isMissingNode() || metadata.isNull()) {
             throw new IOException("Resposta do Shazam sem dados suficientes para a musica");
         }
 
@@ -162,7 +160,7 @@ public class ShazamAPIServices {
     }
 
     private File baixarYoutube(String urlYoutube, int indice) throws Exception {
-        Youtube yt = new Youtube(urlYoutube);
+        Youtube yt = new Youtube(urlYoutube, "WEB");
         File downloadDir = new File("C:\\Users\\ivanb\\Music\\TESTE\\download-" + indice + "\\");
 
         Files.createDirectories(downloadDir.toPath());
