@@ -1,6 +1,6 @@
 package com.tubedownload.javatube.nodejsrunner;
 
-import com.github.felipeucelli.nodejswrapper.NodeWrapper;
+import com.tubedownload.javatube.nodejsrunner.NodeWrapper;
 import org.json.JSONObject;
 
 import java.io.*;

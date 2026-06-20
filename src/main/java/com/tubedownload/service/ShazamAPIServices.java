@@ -1,9 +1,9 @@
 package com.tubedownload.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.github.felipeucelli.javatube.Playlist;
-import com.github.felipeucelli.javatube.StreamQuery;
-import com.github.felipeucelli.javatube.Youtube;
+import com.tubedownload.javatube.Playlist;
+import com.tubedownload.javatube.StreamQuery;
+import com.tubedownload.javatube.Youtube;
 import com.mpatric.mp3agic.*;
 import com.tubedownload.dto.ResponseShazamAPI;
 import com.tubedownload.shazamapi.shazam.RecognizeResult;
@@ -19,10 +19,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @ApplicationScoped
 public class ShazamAPIServices {
@@ -36,9 +33,9 @@ public class ShazamAPIServices {
         this.shazamService = shazamService;
     }
 
-    public void processarUnicoVideo(String urlYoutube) throws Exception {
+    public ResponseShazamAPI processarUnicoVideo(String urlYoutube) throws Exception {
 
-        File inputFile = baixarYoutube(urlYoutube, 1);
+        File inputFile = baixarYoutube(urlYoutube);
 
         File outputFile = new File(outputDir, stripExtension(inputFile.getName()) + ".mp3");
         System.out.println("Input file: " + inputFile.getAbsolutePath());
@@ -46,6 +43,8 @@ public class ShazamAPIServices {
         byte[] mp3Data = getMp3Data(inputFile, outputFile);
 
         inserirTags(outputFile.getAbsolutePath(), reconhecerShazam(mp3Data));
+
+        return reconhecerShazam(mp3Data);
     }
 
     public void processarPlaylist(String urlPlaylist) throws Exception {
@@ -65,7 +64,7 @@ public class ShazamAPIServices {
             File inputFile = null;
             File outputFile = null;
             try {
-                inputFile = baixarYoutube(videoUrls.get(videos), videos);
+                inputFile = baixarYoutube(videoUrls.get(videos));
 
                 outputFile = new File(outputDir, stripExtension(inputFile.getName()) + ".mp3");
                 System.out.println("Input file: " + inputFile.getAbsolutePath());
@@ -89,6 +88,19 @@ public class ShazamAPIServices {
         }
     }
 
+    public void processarArquivos(String urlDiretorio) throws Exception {
+
+        File inputDir = new File(urlDiretorio);
+
+        for (File file : Objects.requireNonNull(inputDir.listFiles())) {
+            byte[] mp3Data = Files.readAllBytes(file.toPath());
+
+            //inserirTags(file.getAbsolutePath(), reconhecerShazam(mp3Data));
+        }
+
+
+    }
+
     private ResponseShazamAPI reconhecerShazam(byte[] mp3Data) throws Exception {
         List<RecognizeResult> result = shazamService.recognize(mp3Data);
         if (result.isEmpty()) {
@@ -100,16 +112,20 @@ public class ShazamAPIServices {
         JsonNode sections = track.path("sections");
         JsonNode metadata = track.path("metadata");
 
-        if (track.isMissingNode() || track.isNull() || sections.isMissingNode() || sections.isNull() ||
-                sections.isEmpty() || metadata.isMissingNode() || metadata.isNull()) {
+        if (track.isMissingNode() || track.isNull()) {
             throw new IOException("Resposta do Shazam sem dados suficientes para a musica");
         }
+        if (sections.isMissingNode() || sections.isNull() || sections.isEmpty()) {
+            throw new IOException("Resposta do Shazam sem sections");
+        }
+//        if (metadata.isMissingNode() || metadata.isNull()) {
+//            throw new IOException("Resposta do Shazam sem metadata");
+//        }
 
         return new ResponseShazamAPI(
                 track.path("title").asText(),
                 track.path("subtitle").asText(),
                 track.path("sections").get(0).path("metadata").get(0).path("text").asText(),
-                track.path("sections").get(0).path("metadata").get(2).path("text").asText(),
                 track.path("images").path("coverart").asText()
         );
     }
@@ -126,7 +142,6 @@ public class ShazamAPIServices {
         id3v24Tag.setTitle(response.titulo());
         id3v24Tag.setArtist(response.artista());
         id3v24Tag.setAlbum(response.album());
-        id3v24Tag.setYear(response.ano());
 
         Path imageFile = downloadImage(
                 response.urlImage()
@@ -159,15 +174,15 @@ public class ShazamAPIServices {
         return output;
     }
 
-    private File baixarYoutube(String urlYoutube, int indice) throws Exception {
-        Youtube yt = new Youtube(urlYoutube, "WEB");
-        File downloadDir = new File("C:\\Users\\ivanb\\Music\\TESTE\\download-" + indice + "\\");
+    private File baixarYoutube(String urlVideo) throws Exception {
+        Youtube yt = new Youtube(urlVideo);
+        File downloadDir = new File("C:\\Users\\ivanb\\Music\\TESTE\\");
 
         Files.createDirectories(downloadDir.toPath());
         clearDirectory(downloadDir.toPath());
 
         String downloadPath = ensureTrailingSeparator(downloadDir.getAbsolutePath());
-        System.out.println("Baixando URL: " + urlYoutube);
+        System.out.println("Baixando URL: " + urlVideo);
         System.out.println("Baixando para: " + downloadPath);
 
         yt.streams().filter(StreamQuery.Filter.builder()

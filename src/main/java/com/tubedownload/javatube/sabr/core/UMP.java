@@ -1,6 +1,6 @@
 package com.tubedownload.javatube.sabr.core;
 
-import com.github.felipeucelli.javatube.sabr.core.ChunkedDataBuffer;
+import com.tubedownload.javatube.sabr.core.ChunkedDataBuffer;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -9,9 +9,9 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 public class UMP {
-    private com.github.felipeucelli.javatube.sabr.core.ChunkedDataBuffer chunkedDataBuffer;
+    private com.tubedownload.javatube.sabr.core.ChunkedDataBuffer chunkedDataBuffer;
 
-    public UMP(com.github.felipeucelli.javatube.sabr.core.ChunkedDataBuffer chunkedDataBuffer) {
+    public UMP(com.tubedownload.javatube.sabr.core.ChunkedDataBuffer chunkedDataBuffer) {
         this.chunkedDataBuffer = chunkedDataBuffer;
     }
 
@@ -41,7 +41,7 @@ public class UMP {
                 return result;
             }
 
-            Object[] splitResult = ((com.github.felipeucelli.javatube.sabr.core.ChunkedDataBuffer) this.chunkedDataBuffer.split(offset)[1]).split((int) partSize);
+            Object[] splitResult = ((com.tubedownload.javatube.sabr.core.ChunkedDataBuffer) this.chunkedDataBuffer.split(offset)[1]).split((int) partSize);
 
             offset = 0;
             Map<String, Object> partData = new HashMap<>();

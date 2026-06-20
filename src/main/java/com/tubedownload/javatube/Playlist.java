@@ -26,7 +26,7 @@ public class Playlist {
     @Override
     public String toString(){
         try {
-            return "<com.github.felipeucelli.javatube.Playlist object: playlistId=" + getPlaylistId() + ">";
+            return "<com.tubedownload.javatube.Playlist object: playlistId=" + getPlaylistId() + ">";
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -57,7 +57,7 @@ public class Playlist {
     }
 
     protected JSONObject setJson() throws Exception {
-        Pattern pattern = Pattern.compile("ytInitialData\\s=\\s(\\{\\\"responseContext\\\":.*\\});</script>");
+        Pattern pattern = Pattern.compile("ytInitialData\\s*=\\s*(\\{.*?\\});</script>", Pattern.DOTALL);
         Matcher matcher = pattern.matcher(getHtml());
         if(matcher.find()){
             return new JSONObject(matcher.group(1));
@@ -160,7 +160,36 @@ public class Playlist {
 
         }catch (Exception ignored){
         }
+        if (swap.isEmpty()) {
+            swap = collectItemsRecursively(rawJson);
+        }
         return swap;
+    }
+
+    private JSONArray collectItemsRecursively(Object node) {
+        JSONArray items = new JSONArray();
+        collectItemsRecursively(node, items);
+        return items;
+    }
+
+    private void collectItemsRecursively(Object node, JSONArray items) {
+        if (node instanceof JSONObject object) {
+            if (object.has("playlistVideoRenderer")
+                    || object.has("gridVideoRenderer")
+                    || object.has("videoRenderer")
+                    || object.has("richItemRenderer")
+                    || object.has("shortsLockupViewModel")
+                    || object.has("playlistRenderer")) {
+                items.put(object);
+            }
+            for (String key : object.keySet()) {
+                collectItemsRecursively(object.get(key), items);
+            }
+        } else if (node instanceof JSONArray array) {
+            for (int i = 0; i < array.length(); i++) {
+                collectItemsRecursively(array.get(i), items);
+            }
+        }
     }
 
     protected ArrayList<String> unify(ArrayList<String> list){
@@ -177,18 +206,39 @@ public class Playlist {
             for(int i = 0; i < video.length(); i++){
                 try{
                     if (video.getJSONObject(i).has("richItemRenderer")){
-                        videosId.add("https://www.youtube.com/watch?v=" + video.getJSONObject(i)
+                        JSONObject content = video.getJSONObject(i)
                                 .getJSONObject("richItemRenderer")
-                                .getJSONObject("content")
-                                .getJSONObject("shortsLockupViewModel")
-                                .getJSONObject("onTap")
-                                .getJSONObject("innertubeCommand")
-                                .getJSONObject("reelWatchEndpoint")
+                                .getJSONObject("content");
+                        if (content.has("shortsLockupViewModel")) {
+                            videosId.add("https://www.youtube.com/watch?v=" + content
+                                    .getJSONObject("shortsLockupViewModel")
+                                    .getJSONObject("onTap")
+                                    .getJSONObject("innertubeCommand")
+                                    .getJSONObject("reelWatchEndpoint")
+                                    .getString("videoId"));
+                        } else if (content.has("videoRenderer")) {
+                            videosId.add("https://www.youtube.com/watch?v=" + content
+                                    .getJSONObject("videoRenderer")
+                                    .getString("videoId"));
+                        } else if (content.has("playlistRenderer")) {
+                            videosId.add("https://www.youtube.com/playlist?list=" + content
+                                    .getJSONObject("playlistRenderer")
+                                    .getString("playlistId"));
+                        }
+                    } else if (video.getJSONObject(i).has("gridVideoRenderer")) {
+                        videosId.add("https://www.youtube.com/watch?v=" + video.getJSONObject(i)
+                                .getJSONObject("gridVideoRenderer")
                                 .getString("videoId"));
-                    }else {
+                    } else if (video.getJSONObject(i).has("playlistVideoRenderer")) {
                         videosId.add("https://www.youtube.com/watch?v=" + video.getJSONObject(i)
                                 .getJSONObject("playlistVideoRenderer")
                                 .getString("videoId"));
+                    } else if (video.getJSONObject(i).has("videoRenderer")) {
+                        videosId.add("https://www.youtube.com/watch?v=" + video.getJSONObject(i)
+                                .getJSONObject("videoRenderer")
+                                .getString("videoId"));
+                    }else {
+                        continue;
                     }
                 }catch (Exception ignored){
                 }

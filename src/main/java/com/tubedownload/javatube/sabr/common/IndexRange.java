@@ -1,7 +1,7 @@
 package com.tubedownload.javatube.sabr.common;
 
-import com.github.felipeucelli.javatube.sabr.proto.Proto.BinaryReader;
-import com.github.felipeucelli.javatube.sabr.proto.Proto.BinaryWriter;
+import com.tubedownload.javatube.sabr.proto.Proto.BinaryReader;
+import com.tubedownload.javatube.sabr.proto.Proto.BinaryWriter;
 import java.util.HashMap;
 import java.util.Map;
 

@@ -1,5 +1,6 @@
 package com.tubedownload.resource;
 
+import com.tubedownload.dto.ResponseShazamAPI;
 import com.tubedownload.service.ShazamAPIServices;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -14,15 +15,15 @@ public class ShazamResource {
     ShazamAPIServices service;
 
     @POST
-    @Path("/reconhecer/video/{urlYouTube}")
+    @Path("/reconhecer/video/{urlVideo}")
     @Consumes(MediaType.TEXT_PLAIN)
-    public Response processaUnicoVideo(@PathParam("urlYouTube") String urlYouTube) {
-        if (urlYouTube == null || urlYouTube.isEmpty()) {
+    public Response processaUnicoVideo(@PathParam("urlVideo") String urlVideo) {
+        if (urlVideo == null || urlVideo.isEmpty()) {
             throw new WebApplicationException("Send a valid YouTube URL in the request body.", Response.Status.BAD_REQUEST);
         }
         try {
-            service.processarUnicoVideo(urlYouTube);
-            return Response.ok().build();
+            ResponseShazamAPI response = service.processarUnicoVideo(urlVideo);
+            return Response.ok(response).build();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -37,6 +38,21 @@ public class ShazamResource {
         }
         try {
             service.processarPlaylist(urlPlaylist);
+            return Response.ok().build();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @POST
+    @Path("/reconhecer/diretorio/{urlDiretorio}")
+    @Consumes(MediaType.TEXT_PLAIN)
+    public Response processaDiretorio(@PathParam("urlDiretorio") String urlDiretorio) {
+        if (urlDiretorio == null || urlDiretorio.isEmpty()) {
+            throw new WebApplicationException("Send a valid directory path in the request body.", Response.Status.BAD_REQUEST);
+        }
+        try {
+            service.processarArquivos(urlDiretorio);
             return Response.ok().build();
         } catch (Exception e) {
             throw new RuntimeException(e);

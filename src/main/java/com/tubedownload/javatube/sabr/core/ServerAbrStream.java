@@ -1,12 +1,12 @@
 package com.tubedownload.javatube.sabr.core;
 
-import com.github.felipeucelli.javatube.Stream;
-import com.github.felipeucelli.javatube.Youtube;
-import com.github.felipeucelli.javatube.exceptions.SABRError;
-import com.github.felipeucelli.javatube.sabr.common.FormatId;
-import com.github.felipeucelli.javatube.sabr.core.ChunkedDataBuffer;
-import com.github.felipeucelli.javatube.sabr.core.UMP;
-import com.github.felipeucelli.javatube.sabr.streaming.*;
+import com.tubedownload.javatube.Stream;
+import com.tubedownload.javatube.Youtube;
+import com.tubedownload.javatube.exceptions.SABRError;
+import com.tubedownload.javatube.sabr.common.FormatId;
+import com.tubedownload.javatube.sabr.core.ChunkedDataBuffer;
+import com.tubedownload.javatube.sabr.core.UMP;
+import com.tubedownload.javatube.sabr.streaming.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

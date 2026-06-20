@@ -1,11 +1,12 @@
 package com.tubedownload;
 
-import com.github.felipeucelli.javatube.Playlist;
-import com.github.felipeucelli.javatube.StreamQuery;
-import com.github.felipeucelli.javatube.Youtube;
+import com.tubedownload.javatube.Playlist;
+import com.tubedownload.javatube.StreamQuery;
+import com.tubedownload.javatube.Youtube;
 import com.mpatric.mp3agic.ID3v24Tag;
 import com.mpatric.mp3agic.Mp3File;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -20,22 +21,31 @@ public class Main {
 
     static void main() throws Exception {
 
-        ArrayList<String> videoUrls = new ArrayList<>(new Playlist(
-                "https://youtube.com/playlist?list=PLkjk76v4J1ar7czy0q47g5lSXgK5uzrCv&si=x3w5aXOWUeA5aT88")
-                .getVideos());
+        File downloadDir = new File("C:\\Users\\ivanb\\Music\\TESTE\\");
 
-        for (String videoUrl : videoUrls) {
-            System.out.println(videoUrl);
-        }
+        Youtube yt = new Youtube("https://www.youtube.com/watch?v=CNQasBhFG4Q");
+        yt.streams().filter(StreamQuery.Filter.builder()
+                .type("audio")
+                .abr("128kbps")
+                .build()
+        ).getFirst().download(downloadDir.getAbsolutePath());
 
-        for (int videos = 0; videos < 5; videos++ ) {
-            Youtube yt = new Youtube(videoUrls.get(videos));
-            yt.streams().filter(StreamQuery.Filter.builder()
-                    .type("audio")
-                    .abr("128kbps")
-                    .build()
-            ).getFirst().download("C:\\Users\\ivanb\\Music\\TESTE\\");
-        }
+//        ArrayList<String> videoUrls = new ArrayList<>(new Playlist(
+//                "https://youtube.com/playlist?list=PLkjk76v4J1ar7czy0q47g5lSXgK5uzrCv")
+//                .getVideos());
+//
+//        for (String videoUrl : videoUrls) {
+//            System.out.println(videoUrl);
+//        }
+//
+//        for (int videos = 0; videos < 5; videos++ ) {
+//            Youtube yt = new Youtube(videoUrls.get(videos));
+//            yt.streams().filter(StreamQuery.Filter.builder()
+//                    .type("audio")
+//                    .abr("128kbps")
+//                    .build()
+//            ).getFirst().download("C:\\Users\\ivanb\\Music\\TESTE\\");
+//        }
 
 //        Mp3File mp3file = new Mp3File("C:\\Users\\ivanb\\Music\\TESTE\\NOVO\\Bison e Comassetto - Mundão Moderno.mp3");
 //        ID3v24Tag id3v24Tag;

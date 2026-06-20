@@ -1,7 +1,7 @@
 package com.tubedownload.javatube.nodejsrunner;
 
-import com.github.felipeucelli.javatube.nodejsrunner.NodeRunner;
-import com.github.felipeucelli.nodejswrapper.NodeWrapper;
+import com.tubedownload.javatube.nodejsrunner.NodeRunner;
+import com.tubedownload.javatube.nodejsrunner.NodeWrapper;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
