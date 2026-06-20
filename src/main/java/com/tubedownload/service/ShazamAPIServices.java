@@ -41,10 +41,12 @@ public class ShazamAPIServices {
         System.out.println("Input file: " + inputFile.getAbsolutePath());
 
         byte[] mp3Data = getMp3Data(inputFile, outputFile);
+        ResponseShazamAPI response = reconhecerShazam(mp3Data);
+        if (response != null) {
+            inserirTags(outputFile.getAbsolutePath(), response);
+        }
 
-        inserirTags(outputFile.getAbsolutePath(), reconhecerShazam(mp3Data));
-
-        return reconhecerShazam(mp3Data);
+        return response;
     }
 
     public void processarPlaylist(String urlPlaylist) throws Exception {
@@ -71,8 +73,9 @@ public class ShazamAPIServices {
 
                 byte[] mp3Data = getMp3Data(inputFile, outputFile);
                 ResponseShazamAPI response = reconhecerShazam(mp3Data);
-
-                inserirTags(outputFile.getAbsolutePath(), response);
+                if (response != null) {
+                    inserirTags(outputFile.getAbsolutePath(), response);
+                }
             } catch (IOException e) {
                 System.out.println("Pulando video " + videos + ": " + e.getMessage());
             } catch (IndexOutOfBoundsException e) {
@@ -95,7 +98,13 @@ public class ShazamAPIServices {
         for (File file : Objects.requireNonNull(inputDir.listFiles())) {
             byte[] mp3Data = Files.readAllBytes(file.toPath());
 
-            //inserirTags(file.getAbsolutePath(), reconhecerShazam(mp3Data));
+            System.out.println("Processando arquivo: " + file.toPath());
+            System.out.println("Input file: " + file.getAbsolutePath());
+
+            ResponseShazamAPI response = reconhecerShazam(mp3Data);
+            if (response != null) {
+                inserirTags(file.getAbsolutePath(), response);
+            }
         }
 
 
@@ -104,41 +113,83 @@ public class ShazamAPIServices {
     private ResponseShazamAPI reconhecerShazam(byte[] mp3Data) throws Exception {
         List<RecognizeResult> result = shazamService.recognize(mp3Data);
         if (result.isEmpty()) {
-            throw new IOException("No recognition result from Shazam API");
+            return null;
         }
 
         JsonNode response = result.getFirst().response();
         JsonNode track = response.path("track");
-        JsonNode sections = track.path("sections");
-        JsonNode metadata = track.path("metadata");
-
         if (track.isMissingNode() || track.isNull()) {
-            throw new IOException("Resposta do Shazam sem dados suficientes para a musica");
+            return null;
         }
-        if (sections.isMissingNode() || sections.isNull() || sections.isEmpty()) {
-            throw new IOException("Resposta do Shazam sem sections");
-        }
-//        if (metadata.isMissingNode() || metadata.isNull()) {
-//            throw new IOException("Resposta do Shazam sem metadata");
-//        }
 
-        return new ResponseShazamAPI(
-                track.path("title").asText(),
-                track.path("subtitle").asText(),
-                track.path("sections").get(0).path("metadata").get(0).path("text").asText(),
-                track.path("images").path("coverart").asText()
-        );
+        String titulo = textOrNull(track, "title");
+        String artista = textOrNull(track, "subtitle");
+        String album = extractAlbum(track);
+        String imageUrl = extractCoverArtUrl(track);
+
+        if (titulo == null || artista == null || album == null || imageUrl == null) {
+            return null;
+        }
+
+        return new ResponseShazamAPI(titulo, artista, album, imageUrl);
+    }
+
+    private static String extractAlbum(JsonNode track) {
+        JsonNode sections = track.path("sections");
+        if (!sections.isArray() || sections.isEmpty()) {
+            return null;
+        }
+
+        JsonNode firstSection = sections.get(0);
+        JsonNode metadata = firstSection.path("metadata");
+        if (!metadata.isArray() || metadata.isEmpty()) {
+            return null;
+        }
+
+        JsonNode firstMetadata = metadata.get(0);
+        if (firstMetadata == null || firstMetadata.isMissingNode() || firstMetadata.isNull()) {
+            return null;
+        }
+
+        JsonNode textNode = firstMetadata.path("text");
+        if (textNode.isMissingNode() || textNode.isNull()) {
+            return null;
+        }
+
+        String album = textNode.asText(null);
+        return album == null || album.isBlank() ? null : album;
+    }
+
+    private static String extractCoverArtUrl(JsonNode track) {
+        JsonNode imageNode = track.path("images").path("coverart");
+        if (imageNode.isMissingNode() || imageNode.isNull()) {
+            return null;
+        }
+        String imageUrl = imageNode.asText(null);
+        return imageUrl == null || imageUrl.isBlank() ? null : imageUrl;
+    }
+
+    private static String textOrNull(JsonNode parent, String field) {
+        JsonNode node = parent.path(field);
+        if (node.isMissingNode() || node.isNull()) {
+            return null;
+        }
+        String value = node.asText(null);
+        return value == null || value.isBlank() ? null : value;
     }
 
     private void inserirTags(String pathArquivo, ResponseShazamAPI response) throws InvalidDataException, UnsupportedTagException, IOException, InterruptedException, NotSupportedException {
         Mp3File mp3file = new Mp3File(pathArquivo);
-        ID3v24Tag id3v24Tag;
+        ID3v24Tag id3v24Tag = new ID3v24Tag();
         if (mp3file.hasId3v2Tag()) {
-            id3v24Tag = (ID3v24Tag) mp3file.getId3v2Tag();
+            System.out.println("Usando tag ID3v2 existente." + mp3file.getId3v2Tag());
+            //id3v24Tag = (ID3v24Tag) mp3file.getId3v2Tag();
+            //mp3file.setId3v2Tag(id3v24Tag);
         } else {
             id3v24Tag = new ID3v24Tag();
             mp3file.setId3v2Tag(id3v24Tag);
         }
+
         id3v24Tag.setTitle(response.titulo());
         id3v24Tag.setArtist(response.artista());
         id3v24Tag.setAlbum(response.album());
@@ -149,7 +200,10 @@ public class ShazamAPIServices {
         byte[] imageData = Files.readAllBytes(imageFile);
 
         id3v24Tag.setAlbumImage(imageData, "image/jpg");
-        mp3file.save("C:\\Users\\ivanb\\Music\\TESTE\\NOVO\\" + response.artista() + " - " + response.titulo() + ".mp3");
+        String nomeArquivo = response.artista() + " - " + response.titulo() + ".mp3";
+        String nomeLimpo = nomeArquivo.replaceAll("[\\\\/:*?\"<>|]", "");
+        System.out.println("Nome: " + nomeLimpo);
+        mp3file.save("C:\\Users\\ivanb\\Music\\TESTE\\NOVO\\" + nomeLimpo);
 
         Files.deleteIfExists(Path.of(pathArquivo));
         Files.deleteIfExists(imageFile);
