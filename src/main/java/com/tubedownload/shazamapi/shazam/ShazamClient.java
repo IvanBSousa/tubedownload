@@ -59,14 +59,14 @@ public class ShazamClient {
                 .header("Accept", "*/*")
 
                 //QUANDO DER ERRO 429 ALTERAR SHAZAM/XXXX E CFNETWORK/XXXX
-                .header("User-Agent", "Shazam/3688 CFNetwork/1199 Darwin/20.0.0")
+                .header("User-Agent", "Shazam/3691 CFNetwork/1196 Darwin/20.0.0")
                 .header("Accept-Language", config.lang())
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
                 .build();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IOException("Shazam returned HTTP " + response.statusCode() + ": " + response.body());
+            System.out.println("Shazam returned HTTP " + response.statusCode() + ": " + response.body());
         }
         return objectMapper.readTree(response.body());
     }

@@ -104,6 +104,7 @@ public class ShazamAPIServices {
             ResponseShazamAPI response = reconhecerShazam(mp3Data);
             if (response != null) {
                 inserirTags(file.getAbsolutePath(), response);
+                Thread.sleep(10000);
             }
         }
 
@@ -113,12 +114,14 @@ public class ShazamAPIServices {
     private ResponseShazamAPI reconhecerShazam(byte[] mp3Data) throws Exception {
         List<RecognizeResult> result = shazamService.recognize(mp3Data);
         if (result.isEmpty()) {
+            Thread.sleep(2000);
             return null;
         }
 
         JsonNode response = result.getFirst().response();
         JsonNode track = response.path("track");
         if (track.isMissingNode() || track.isNull()) {
+            Thread.sleep(2000);
             return null;
         }
 
@@ -127,8 +130,13 @@ public class ShazamAPIServices {
         String album = extractAlbum(track);
         String imageUrl = extractCoverArtUrl(track);
 
-        if (titulo == null || artista == null || album == null || imageUrl == null) {
+        if (titulo == null || artista == null || imageUrl == null) {
+            Thread.sleep(2000);
             return null;
+        }
+
+        if (album == null) {
+            album = artista;
         }
 
         return new ResponseShazamAPI(titulo, artista, album, imageUrl);

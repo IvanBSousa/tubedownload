@@ -14,6 +14,7 @@ import java.util.List;
 @ApplicationScoped
 public class ShazamService {
     private static final double MAX_TIME_SECONDS = 8;
+    private static final int MAX_SIGNATURES_PER_AUDIO = 2;
 
     @Inject
     AudioNormalizer audioNormalizer;
@@ -25,7 +26,11 @@ public class ShazamService {
         short[] samples = audioNormalizer.normalize(audioBytes);
         SignatureGenerator signatureGenerator = createSignatureGenerator(samples);
         List<RecognizeResult> results = new ArrayList<>();
+        int attempts = 0;
         for (DecodedMessage signature : signatureGenerator) {
+            if (attempts++ >= MAX_SIGNATURES_PER_AUDIO) {
+                break;
+            }
             int currentOffset = signatureGenerator.samplesProcessed() / AudioNormalizer.NORMALIZED_FRAME_RATE;
             var response = shazamClient.recognize(signature);
             results.add(new RecognizeResult(currentOffset, response));
