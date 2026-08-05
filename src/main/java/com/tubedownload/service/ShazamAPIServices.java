@@ -188,19 +188,22 @@ public class ShazamAPIServices {
 
     private void inserirTags(String pathArquivo, ResponseShazamAPI response) throws InvalidDataException, UnsupportedTagException, IOException, InterruptedException, NotSupportedException {
         Mp3File mp3file = new Mp3File(pathArquivo);
-        ID3v24Tag id3v24Tag = new ID3v24Tag();
+        ID3v24Tag id3v24Tag;
         if (mp3file.hasId3v2Tag()) {
-            System.out.println("Usando tag ID3v2 existente." + mp3file.getId3v2Tag());
-            //id3v24Tag = (ID3v24Tag) mp3file.getId3v2Tag();
-            //mp3file.setId3v2Tag(id3v24Tag);
+            System.out.println("Usando tag ID3v2 existente.");
+            if (mp3file.getId3v2Tag() instanceof ID3v24Tag existingTag) {
+                id3v24Tag = existingTag;
+            } else {
+                id3v24Tag = new ID3v24Tag();
+            }
         } else {
             id3v24Tag = new ID3v24Tag();
-            mp3file.setId3v2Tag(id3v24Tag);
         }
 
         id3v24Tag.setTitle(response.titulo());
         id3v24Tag.setArtist(response.artista());
         id3v24Tag.setAlbum(response.album());
+        mp3file.setId3v2Tag(id3v24Tag);
 
         Path imageFile = downloadImage(
                 response.urlImage()
@@ -211,7 +214,9 @@ public class ShazamAPIServices {
         String nomeArquivo = response.artista() + " - " + response.titulo() + ".mp3";
         String nomeLimpo = nomeArquivo.replaceAll("[\\\\/:*?\"<>|]", "");
         System.out.println("Nome: " + nomeLimpo);
-        mp3file.save("C:\\Users\\ivanb\\Music\\TESTE\\NOVO\\" + nomeLimpo);
+        String destino = "C:\\Users\\ivanb\\Music\\TESTE\\NOVO\\" + nomeLimpo;
+        mp3file.save(destino);
+        System.out.println("Arquivo salvo em: " + destino);
 
         Files.deleteIfExists(Path.of(pathArquivo));
         Files.deleteIfExists(imageFile);

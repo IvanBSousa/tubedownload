@@ -108,6 +108,81 @@ public class Playlist {
         return swap;
     }
 
+    private JSONArray extractContentsFromContinuation(JSONObject rawJson) throws JSONException {
+        if (rawJson.has("continuationContents")) {
+            JSONObject continuationContents = rawJson.getJSONObject("continuationContents");
+            if (continuationContents.has("playlistVideoListContinuation")) {
+                return continuationContents
+                        .getJSONObject("playlistVideoListContinuation")
+                        .getJSONArray("contents");
+            }
+            if (continuationContents.has("richGridContinuation")) {
+                return continuationContents
+                        .getJSONObject("richGridContinuation")
+                        .getJSONArray("contents");
+            }
+        }
+
+        if (rawJson.has("onResponseReceivedActions")) {
+            JSONArray actions = rawJson.getJSONArray("onResponseReceivedActions");
+            for (int i = 0; i < actions.length(); i++) {
+                JSONObject action = actions.getJSONObject(i);
+                if (action.has("appendContinuationItemsAction")) {
+                    return action.getJSONObject("appendContinuationItemsAction")
+                            .getJSONArray("continuationItems");
+                }
+            }
+        }
+
+        return new JSONArray();
+    }
+
+    private JSONArray extractContentsFromTabs(JSONObject rawJson) throws JSONException {
+        JSONObject browseResults = rawJson.getJSONObject("contents")
+                .getJSONObject("twoColumnBrowseResultsRenderer");
+
+        JSONArray tabs = browseResults.getJSONArray("tabs");
+        JSONObject selectedTab = null;
+        for (int i = 0; i < tabs.length(); i++) {
+            JSONObject tab = tabs.getJSONObject(i).getJSONObject("tabRenderer");
+            if (tab.optBoolean("selected", false)) {
+                selectedTab = tab;
+                break;
+            }
+            if (selectedTab == null) {
+                selectedTab = tab;
+            }
+        }
+
+        if (selectedTab == null || !selectedTab.has("content")) {
+            return new JSONArray();
+        }
+
+        JSONObject content = selectedTab.getJSONObject("content");
+        if (content.has("sectionListRenderer")) {
+            JSONArray sections = content.getJSONObject("sectionListRenderer").getJSONArray("contents");
+            for (int j = 0; j < sections.length(); j++) {
+                JSONObject section = sections.getJSONObject(j).getJSONObject("itemSectionRenderer");
+                JSONArray sectionContents = section.getJSONArray("contents");
+                for (int k = 0; k < sectionContents.length(); k++) {
+                    JSONObject renderer = sectionContents.getJSONObject(k);
+                    if (renderer.has("playlistVideoListRenderer")) {
+                        return renderer.getJSONObject("playlistVideoListRenderer").getJSONArray("contents");
+                    }
+                    if (renderer.has("richGridRenderer")) {
+                        return renderer.getJSONObject("richGridRenderer").getJSONArray("contents");
+                    }
+                }
+            }
+        }
+
+        if (content.has("richGridRenderer")) {
+            return content.getJSONObject("richGridRenderer").getJSONArray("contents");
+        }
+
+        return new JSONArray();
+    }
+
     protected JSONArray buildContinuationUrl(String continuation) throws Exception {
         String data = "{" +
                         "\"continuation\": \"" + continuation + "\"" +
@@ -118,37 +193,14 @@ public class Playlist {
     protected JSONArray extractVideos(JSONObject rawJson) {
         JSONArray swap = new JSONArray();
         try {
-            JSONArray importantContent;
-            try {
-                JSONObject tabs = rawJson.getJSONObject("contents")
-                        .getJSONObject("twoColumnBrowseResultsRenderer")
-                        .getJSONArray("tabs")
-                        .getJSONObject(0)
-                        .getJSONObject("tabRenderer")
-                        .getJSONObject("content")
-                        .getJSONObject("sectionListRenderer")
-                        .getJSONArray("contents")
-                        .getJSONObject(0);
+            JSONArray importantContent = rawJson.has("continuationContents")
+                    ? extractContentsFromContinuation(rawJson)
+                    : extractContentsFromTabs(rawJson);
 
-                JSONObject renderer = tabs.getJSONObject("itemSectionRenderer")
-                        .getJSONArray("contents")
-                        .getJSONObject(0);
-                if (renderer.has("richGridRenderer")){
-                    importantContent = renderer
-                            .getJSONObject("richGridRenderer")
-                            .getJSONArray("contents");
-                }else {
-                    importantContent = renderer
-                            .getJSONObject("playlistVideoListRenderer")
-                            .getJSONArray("contents");
-                }
-
-            }catch (JSONException e){
-                importantContent = rawJson.getJSONArray("onResponseReceivedActions")
-                        .getJSONObject(0)
-                        .getJSONObject("appendContinuationItemsAction")
-                        .getJSONArray("continuationItems");
+            if (importantContent.isEmpty()) {
+                importantContent = extractContentsFromContinuation(rawJson);
             }
+
             if(importantContent.getJSONObject(importantContent.length() - 1).has("continuationItemRenderer")){
                 setContinuationToken(importantContent);
                 swap = extractContinuationItems(importantContent);
@@ -173,13 +225,14 @@ public class Playlist {
     }
 
     private void collectItemsRecursively(Object node, JSONArray items) {
-        if (node instanceof JSONObject object) {
+            if (node instanceof JSONObject object) {
             if (object.has("playlistVideoRenderer")
                     || object.has("gridVideoRenderer")
                     || object.has("videoRenderer")
                     || object.has("richItemRenderer")
                     || object.has("shortsLockupViewModel")
-                    || object.has("playlistRenderer")) {
+                    || object.has("playlistRenderer")
+                    || object.has("playlistVideoListRenderer")) {
                 items.put(object);
             }
             for (String key : object.keySet()) {
@@ -233,6 +286,18 @@ public class Playlist {
                         videosId.add("https://www.youtube.com/watch?v=" + video.getJSONObject(i)
                                 .getJSONObject("playlistVideoRenderer")
                                 .getString("videoId"));
+                    } else if (video.getJSONObject(i).has("playlistVideoListRenderer")) {
+                        JSONArray contents = video.getJSONObject(i)
+                                .getJSONObject("playlistVideoListRenderer")
+                                .getJSONArray("contents");
+                        for (int j = 0; j < contents.length(); j++) {
+                            JSONObject item = contents.getJSONObject(j);
+                            if (item.has("playlistVideoRenderer")) {
+                                videosId.add("https://www.youtube.com/watch?v=" + item
+                                        .getJSONObject("playlistVideoRenderer")
+                                        .getString("videoId"));
+                            }
+                        }
                     } else if (video.getJSONObject(i).has("videoRenderer")) {
                         videosId.add("https://www.youtube.com/watch?v=" + video.getJSONObject(i)
                                 .getJSONObject("videoRenderer")
