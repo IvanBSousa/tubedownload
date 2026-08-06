@@ -499,11 +499,21 @@ public class InnerTube{
 
         this.usePoToken = usePoToken;
 
+        if (usePoToken) {
+            String envVisitorData = System.getenv("YOUTUBE_VISITOR_DATA");
+            String envPoToken = System.getenv("YOUTUBE_PO_TOKEN");
+            if (envVisitorData != null && !envVisitorData.isBlank()
+                    && envPoToken != null && !envPoToken.isBlank()) {
+                accessVisitorData = envVisitorData;
+                accessPoToken = envPoToken;
+            }
+        }
+
         try {
             String tempDir = System.getProperty("java.io.tmpdir");
             Path path = Paths.get(tempDir, "tokens.json");
 
-            if (usePoToken && allowCache && Files.exists(path)) {
+            if (usePoToken && accessVisitorData == null && accessPoToken == null && allowCache && Files.exists(path)) {
                 String content = new String(Files.readAllBytes(path));
                 JSONObject jsonObject = new JSONObject(content);
                 accessVisitorData = jsonObject.getString("visitorData");
@@ -607,13 +617,14 @@ public class InnerTube{
     }
 
     private String[] defaultPoTokenVerifier(){
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("You can use the tool: https://github.com/YunzheZJU/youtube-po-token-generator, to get the token");
-        System.out.print("Enter with your visitorData: ");
-        String visitorData = scanner.nextLine();
-        System.out.print("Enter with your PoToken: ");
-        String poToken = scanner.nextLine();
-        return new String[]{visitorData, poToken};
+        String visitorData = System.getenv("YOUTUBE_VISITOR_DATA");
+        String poToken = System.getenv("YOUTUBE_PO_TOKEN");
+        if (visitorData != null && !visitorData.isBlank() && poToken != null && !poToken.isBlank()) {
+            return new String[]{visitorData, poToken};
+        }
+        throw new IllegalStateException(
+                "PoToken required, but YOUTUBE_VISITOR_DATA and YOUTUBE_PO_TOKEN are not configured."
+        );
     }
 
     public void cacheTokens() throws JSONException {
@@ -681,6 +692,10 @@ public class InnerTube{
     }
 
     public void fetchPoToken() throws JSONException {
+        if (accessVisitorData != null && accessPoToken != null) {
+            insetPoToken();
+            return;
+        }
         String[] token = defaultPoTokenVerifier();
         accessVisitorData = token[0];
         accessPoToken = token[1];

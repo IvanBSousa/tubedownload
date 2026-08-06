@@ -30,14 +30,16 @@ public class ShazamResource {
     }
 
     @POST
-    @Path("/reconhecer/playlist/{urlPlaylist}")
+    @Path("/reconhecer/playlist/{urlPlaylist}/{primeiroVideo}/{ultimoVideo}")
     @Consumes(MediaType.TEXT_PLAIN)
-    public Response processaPlaylist(@PathParam("urlPlaylist") String urlPlaylist) {
+    public Response processaPlaylist(@PathParam("urlPlaylist") String urlPlaylist,
+                                     @PathParam("primeiroVideo") int primeiroVideo,
+                                     @PathParam("ultimoVideo") int ultimoVideo) {
         if (urlPlaylist == null || urlPlaylist.isEmpty()) {
             throw new WebApplicationException("Send a valid YouTube URL in the request body.", Response.Status.BAD_REQUEST);
         }
         try {
-            service.processarPlaylist(urlPlaylist);
+            service.processarPlaylist(urlPlaylist, primeiroVideo, ultimoVideo);
             return Response.ok().build();
         } catch (Exception e) {
             throw new RuntimeException(e);

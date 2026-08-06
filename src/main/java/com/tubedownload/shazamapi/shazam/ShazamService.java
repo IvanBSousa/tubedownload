@@ -14,7 +14,7 @@ import java.util.List;
 @ApplicationScoped
 public class ShazamService {
     private static final double MAX_TIME_SECONDS = 8;
-    private static final int MAX_SIGNATURES_PER_AUDIO = 2;
+    private static final int MAX_SIGNATURES_PER_AUDIO = 4;
 
     @Inject
     AudioNormalizer audioNormalizer;

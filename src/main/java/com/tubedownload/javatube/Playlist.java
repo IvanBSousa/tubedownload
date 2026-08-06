@@ -16,6 +16,7 @@ public class Playlist {
     protected String html = null;
     protected JSONObject json = null;
     protected String continuationToken = null;
+    protected String visitorData = null;
     InnerTube innerTube;
 
     public Playlist(String InputUrl) throws JSONException {
@@ -57,13 +58,19 @@ public class Playlist {
     }
 
     protected JSONObject setJson() throws Exception {
-        Pattern pattern = Pattern.compile("ytInitialData\\s*=\\s*(\\{.*?\\});</script>", Pattern.DOTALL);
-        Matcher matcher = pattern.matcher(getHtml());
-        if(matcher.find()){
-            return new JSONObject(matcher.group(1));
-        }else {
-            throw new RegexMatchError("setJson: " + pattern);
+        String page = getHtml();
+        Pattern[] patterns = new Pattern[] {
+                Pattern.compile("var ytInitialData\\s*=\\s*(\\{.*?\\});</script>", Pattern.DOTALL),
+                Pattern.compile("ytInitialData\\s*=\\s*(\\{.*?\\});</script>", Pattern.DOTALL),
+                Pattern.compile("ytInitialData\\s*=\\s*(\\{.*?\\});", Pattern.DOTALL)
+        };
+        for (Pattern pattern : patterns) {
+            Matcher matcher = pattern.matcher(page);
+            if (matcher.find()) {
+                return new JSONObject(matcher.group(1));
+            }
         }
+        throw new RegexMatchError("setJson: ytInitialData not found");
     }
 
     protected JSONObject getJson() throws Exception {
@@ -185,7 +192,12 @@ public class Playlist {
 
     protected JSONArray buildContinuationUrl(String continuation) throws Exception {
         String data = "{" +
-                        "\"continuation\": \"" + continuation + "\"" +
+                        "\"continuation\": \"" + continuation + "\"," +
+                        "\"context\": {" +
+                            "\"client\": {" +
+                                "\"visitorData\": \"" + visitorData + "\"" +
+                            "}" +
+                        "}" +
                     "}";
         return extractVideos(innerTube.browse(new JSONObject(data)));
     }
@@ -193,15 +205,29 @@ public class Playlist {
     protected JSONArray extractVideos(JSONObject rawJson) {
         JSONArray swap = new JSONArray();
         try {
-            JSONArray importantContent = rawJson.has("continuationContents")
-                    ? extractContentsFromContinuation(rawJson)
-                    : extractContentsFromTabs(rawJson);
+            JSONArray importantContent = new JSONArray();
+            if (rawJson.has("contents")) {
+                JSONObject responseContext = rawJson.optJSONObject("responseContext");
+                if (responseContext != null) {
+                    JSONObject extensionData = responseContext.optJSONObject("webResponseContextExtensionData");
+                    if (extensionData != null) {
+                        JSONObject ytConfigData = extensionData.optJSONObject("ytConfigData");
+                        if (ytConfigData != null) {
+                            visitorData = ytConfigData.optString("visitorData", visitorData);
+                        }
+                    }
+                }
+                importantContent = extractContentsFromTabs(rawJson);
+            } else if (rawJson.has("continuationContents") || rawJson.has("onResponseReceivedActions")) {
+                importantContent = extractContentsFromContinuation(rawJson);
+            }
 
             if (importantContent.isEmpty()) {
                 importantContent = extractContentsFromContinuation(rawJson);
             }
 
-            if(importantContent.getJSONObject(importantContent.length() - 1).has("continuationItemRenderer")){
+            if (importantContent.length() > 0
+                    && importantContent.getJSONObject(importantContent.length() - 1).has("continuationItemRenderer")) {
                 setContinuationToken(importantContent);
                 swap = extractContinuationItems(importantContent);
             } else {

@@ -210,7 +210,7 @@ public class Stream{
         double percent = 100.0 * bytesReceived / fileSize;
 
         PrintStream out = System.out;
-        out.printf("-|%s| %.1f%%\r", bar, percent);
+        out.printf("-|%s| %.1f%%\r\n", bar, percent);
         out.flush();
     }
 
