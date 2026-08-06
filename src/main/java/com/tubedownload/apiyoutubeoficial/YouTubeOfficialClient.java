@@ -2,7 +2,7 @@ package com.tubedownload.apiyoutubeoficial;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -22,8 +22,6 @@ public class YouTubeOfficialClient {
     private static final int MAX_RESULTS = 50;
 
     private final HttpClient httpClient;
-    @ConfigProperty(name = "app.api.key")
-    String apiKey;
 
     @Inject
     public YouTubeOfficialClient() {
@@ -107,8 +105,15 @@ public class YouTubeOfficialClient {
     }
 
     private String requireApiKey() {
+        String apiKey = ConfigProvider.getConfig().getOptionalValue("app.api.key", String.class).orElse("");
         if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalStateException("app.api.key nao configurada. Defina API_KEY_YOUTUBE_OFICIAL no ambiente.");
+            apiKey = System.getenv("API_KEY_YOUTUBE_OFICIAL");
+        }
+        if (apiKey == null || apiKey.isBlank()) {
+            apiKey = System.getProperty("API_KEY_YOUTUBE_OFICIAL");
+        }
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException("Chave da API nao configurada. Defina app.api.key ou API_KEY_YOUTUBE_OFICIAL.");
         }
         return apiKey;
     }
