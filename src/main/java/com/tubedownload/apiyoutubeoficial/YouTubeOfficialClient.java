@@ -1,5 +1,8 @@
 package com.tubedownload.apiyoutubeoficial;
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -12,22 +15,19 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+@ApplicationScoped
 public class YouTubeOfficialClient {
 
-    private static final String DEFAULT_API_KEY = "AIzaSyAiIw463HUZDWP0orFPI3_PMnp_vXKrFMY";
     private static final String BASE_URL = "https://www.googleapis.com/youtube/v3/playlistItems";
     private static final int MAX_RESULTS = 50;
 
     private final HttpClient httpClient;
-    private final String apiKey;
+    @ConfigProperty(name = "app.api.key")
+    String apiKey;
 
+    @Inject
     public YouTubeOfficialClient() {
-        this(HttpClient.newHttpClient(), resolveApiKey());
-    }
-
-    public YouTubeOfficialClient(HttpClient httpClient, String apiKey) {
-        this.httpClient = httpClient;
-        this.apiKey = apiKey;
+        this.httpClient = HttpClient.newHttpClient();
     }
 
     public List<String> listVideoUrlsFromPlaylist(String playlistUrl) throws IOException, InterruptedException {
@@ -69,7 +69,7 @@ public class YouTubeOfficialClient {
                 .append("?part=snippet")
                 .append("&maxResults=").append(MAX_RESULTS)
                 .append("&playlistId=").append(encode(playlistId))
-                .append("&key=").append(encode(apiKey));
+                .append("&key=").append(encode(requireApiKey()));
         if (pageToken != null && !pageToken.isBlank()) {
             url.append("&pageToken=").append(encode(pageToken));
         }
@@ -106,11 +106,10 @@ public class YouTubeOfficialClient {
         return java.net.URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
-    private static String resolveApiKey() {
-        String env = System.getenv("YOUTUBE_API_KEY");
-        if (env != null && !env.isBlank()) {
-            return env;
+    private String requireApiKey() {
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException("app.api.key nao configurada. Defina API_KEY_YOUTUBE_OFICIAL no ambiente.");
         }
-        return DEFAULT_API_KEY;
+        return apiKey;
     }
 }
